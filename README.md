@@ -38,12 +38,6 @@ Flutter 插件：面向 **Flutter** 应用的跨平台封装，通过一套 Dart
 
 **图例：** ✅ 较完整 · ⚠️ 部分或占位 · ❌ 不提供或恒为空  
 
-### 架构说明（简要）
-
-- **Android / iOS / macOS**：实时频率通过 **`EventChannel`**（`cpu_info_plus/frequency_stream`）推送；原生在后台线程读 sysfs / 组装 Map，再回主线程 `success`。  
-- **Linux / Windows / Web**：无 EventChannel 时，Dart 侧使用 **单个** `Timer.periodic` 调用 `getFrequencyTelemetryOnce`，与移动端的「单次快照含 CPU+GPU」语义一致。  
-- **轮询间隔**：`watchFrequencyTelemetry(interval: …)` 默认 **1 秒**；传入的毫秒数会在 **250～10000** 范围内裁剪（与原生一致）。  
-
 ### 安装
 
 ```yaml
@@ -58,31 +52,13 @@ dependencies:
 flutter pub get
 ```
 
-一般 **不需要** 危险权限即可读取 Build / 大部分属性；若频率或 GPU sysfs 为空，多为 **系统策略**（如 SELinux），而非缺少存储/电话等权限。
 
-### 插件初始化与使用方式
+### 插件初始化与实例化
 
-1. **无需手动注册原生插件**  
-   使用官方 `flutter create` 生成的工程会在启动时通过 **`GeneratedPluginRegistrant.registerWith`** 注册所有插件；**不需要**在 `MainActivity` / `AppDelegate` 里额外写初始化代码即可使用 `CpuInfoPlus`。
-
-2. **没有单独的 `init()` API**  
-   插件通过 **MethodChannel / EventChannel** 与原生通信；在 Dart 侧只需 **`import`** 并创建 **`CpuInfoPlus()`** 实例后，即可调用异步方法。
-
-3. **推荐：复用同一个实例**  
-   在 `StatefulWidget`、`Riverpod`/`GetIt` 服务或你自己的单例里保存一份即可，例如：
+1. **插件初始化**  
    ```dart
    late final CpuInfoPlus _cpuInfo = CpuInfoPlus();
    ```
-   多次 `CpuInfoPlus()` 也能工作，但复用更清晰。
-
-4. **`WidgetsFlutterBinding.ensureInitialized()`**  
-   仅在 **`runApp` 之前**（例如在 `main()` 顶部同步调用插件、或集成测试入口）需要手动调用；普通在界面 `build` / 按钮回调里异步调用**不必**单独写。
-
-5. **Widget 测试 / 单元测试**  
-   需先：`TestWidgetsFlutterBinding.ensureInitialized();`（`flutter_test` 已封装常见场景）。
-
-6. **实时频率流**  
-   `watchFrequencyTelemetry` 返回 **`Stream`**：在 **`StatefulWidget.dispose`** 里 **`cancel()`** `StreamSubscription`，或用 **`StreamBuilder`**（组件卸载时自动取消监听）。
 
 ---
 
@@ -114,7 +90,7 @@ flutter pub get
 
 ---
 
-### 全量 API 示例（每个公开方法各一段）
+### 方法使用示例（每个公开方法各一段）
 
 下列示例默认已：
 
@@ -253,36 +229,12 @@ class _DemoState extends State<DemoPage> {
 }
 ```
 
-#### 一次跑通全部 Future 方法（不含 Stream）
-
-便于集成测试或调试时复制：
-
-```dart
-Future<void> runAllCpuInfoFutures(CpuInfoPlus p) async {
-  final version = await p.getPlatformVersion();
-  final logical = await p.getLogicalProcessorCount();
-  final physical = await p.getPhysicalProcessorCount();
-  final abis = await p.getSupportedAbis();
-  final hw = await p.getCpuHardwareSummary();
-  final snap = await p.getCpuFrequencySnapshot();
-  final gpu = await p.getGpuInfo();
-  final silicon = await p.getSiliconOverview();
-  final report = await p.getCpuInfoReport();
-
-  debugPrint('$version · $logical/$physical · $abis');
-  debugPrint('$hw · $snap · $gpu · $silicon · ${report.platform}');
-}
-```
-
 更多界面组合见仓库 **`example/`**（在 `example` 目录执行 `flutter run`）。
 
-### 限制与常见问题
+### 限制与平台差异（常见问题）
 
 1. **Apple（iOS / macOS）**：系统**不提供**面向第三方 App 的稳定 GPU **主频** API，`gpuCurrentKhz` 多为 `null`。  
 2. **Android GPU 频率**：依赖 `kgsl` / `devfreq` 等节点；不少机型对普通应用 **拒绝读 sysfs**（SELinux），属正常现象。  
 3. **SoC 制造商显示为 QTI**：系统字段常为高通缩写 **QTI**；插件在 `SiliconOverview` 中已映射为 **Qualcomm** 便于展示。  
 4. **桌面 / Web**：Linux、Windows、Web 多为占位或简化实现；Web 上频率流为空。  
 
-### 许可证
-
-见仓库根目录 **`LICENSE`**。

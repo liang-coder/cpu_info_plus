@@ -1,5 +1,9 @@
 allprojects {
     repositories {
+        // Flutter engine artifacts (flutter_embedding_*, arm64_v8a_*, …) — not on Maven Central
+        maven {
+            url = uri("https://storage.googleapis.com/download.flutter.io")
+        }
         google()
         mavenCentral()
     }
