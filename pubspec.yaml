@@ -3,6 +3,8 @@ description: "CPU/GPU 信息与实时频率采样（Android、iOS、macOS、Linu
 repository: https://github.com/liang-coder/net_state_rebuild
 version: 0.0.2
 homepage:
+publish_to: https://pub.dev
+
 
 environment:
   sdk: ^3.6.2
