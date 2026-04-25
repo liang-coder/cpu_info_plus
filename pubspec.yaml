@@ -1,7 +1,7 @@
 name: cpu_info_plus
 description: "CPU/GPU 信息与实时频率采样（Android、iOS、macOS、Linux、Windows、Web）。"
 repository: https://github.com/liang-coder/net_state_rebuild
-version: 0.0.1
+version: 0.0.2
 homepage:
 
 environment:
