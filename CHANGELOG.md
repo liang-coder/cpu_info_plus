@@ -1,3 +1,8 @@
+## 0.0.2
+
+* 修复天玑处理器无gpu频率数据问题.
+
+
 ## 0.0.1
 
-* TODO: Describe initial release.
+* Release 0.0.1
