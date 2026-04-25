@@ -103,6 +103,10 @@ internal object FrequencyTelemetryCollector {
             }
         }
 
+        readGpuKhzFromProcMeminfo()?.let { meminfoHit ->
+            return meminfoHit
+        }
+
         return null to null
     }
 
@@ -116,6 +120,89 @@ internal object FrequencyTelemetryCollector {
             raw in 100L..9_999L -> raw * 1000
             else -> raw
         }
+
+    /**
+     * MTK（天玑）部分机型无法读取常见 sysfs 频率节点时，尝试从 /proc/meminfo 解析 GPU 频率字段。
+     * 注意：/proc/meminfo 是文件，不是目录。
+     */
+    private fun readGpuKhzFromProcMeminfo(): Pair<Long, String>? {
+        val path = "/proc/meminfo"
+        val text =
+            try {
+                File(path).bufferedReader().use { it.readText() }
+            } catch (_: Exception) {
+                return null
+            }
+
+        val lines = text.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.toList()
+        if (lines.isEmpty()) return null
+
+        val directHit =
+            lines.firstNotNullOfOrNull { line ->
+                parseGpuFreqMeminfoLine(line, requireFreqKeyword = true)
+            }
+        if (directHit != null) {
+            return directHit.first to "$path:${directHit.second}"
+        }
+
+        val looseHit =
+            lines.firstNotNullOfOrNull { line ->
+                parseGpuFreqMeminfoLine(line, requireFreqKeyword = false)
+            }
+        return looseHit?.let { it.first to "$path:${it.second}" }
+    }
+
+    /**
+     * 解析示例：
+     * - GpuFreq: 900000
+     * - gpu_clock: 900 MHz
+     * - mtk_gpu_cur_freq_khz: 900000 kHz
+     */
+    private fun parseGpuFreqMeminfoLine(
+        line: String,
+        requireFreqKeyword: Boolean,
+    ): Pair<Long, String>? {
+        val idx = line.indexOf(':')
+        if (idx <= 0) return null
+
+        val key = line.substring(0, idx).trim()
+        val value = line.substring(idx + 1).trim()
+        if (key.isEmpty() || value.isEmpty()) return null
+
+        val keyLc = key.lowercase()
+        if (!keyLc.contains("gpu")) return null
+        if (
+            requireFreqKeyword &&
+            !(
+                keyLc.contains("freq") ||
+                    keyLc.contains("clock") ||
+                    keyLc.contains("clk")
+            )
+        ) {
+            return null
+        }
+
+        val numMatch = Regex("(-?\\d+)").find(value) ?: return null
+        val raw = numMatch.groupValues[1].toLongOrNull() ?: return null
+        if (raw <= 0L) return null
+
+        val valueLc = value.lowercase()
+        val keyUnitHint = keyLc
+        val khz =
+            when {
+                valueLc.contains("ghz") -> raw * 1_000_000L
+                valueLc.contains("mhz") -> raw * 1_000L
+                valueLc.contains("khz") -> raw
+                valueLc.contains("hz") -> raw / 1_000L
+                keyUnitHint.contains("ghz") -> raw * 1_000_000L
+                keyUnitHint.contains("mhz") -> raw * 1_000L
+                keyUnitHint.contains("khz") -> raw
+                keyUnitHint.endsWith("_hz") || keyUnitHint.contains("hz") -> raw / 1_000L
+                else -> normalizeGpuToKhz(raw)
+            }
+        if (khz <= 0L) return null
+        return khz to key
+    }
 
     fun cpuFrequencySnapshot(): Map<String, Any?> {
         val indices = listCpuIndices().ifEmpty { (0 until logicalProcessorCount()).toList() }
