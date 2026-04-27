@@ -42,7 +42,7 @@ Behaviour depends on **SELinux**, **OEM cuts**, and **Apple not exposing stable 
 
 ```yaml
 dependencies:
-  cpu_info_plus: ^0.0.2   # replace with the published version on pub.dev
+  cpu_info_plus: ^0.0.3   # replace with the published version on pub.dev
   # path dependency example:
   # cpu_info_plus:
   #   path: ../cpu_info_plus

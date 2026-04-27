@@ -42,7 +42,7 @@ Flutter 插件：面向 **Flutter** 应用的跨平台封装，通过一套 Dart
 
 ```yaml
 dependencies:
-  cpu_info_plus: ^0.0.2   # 请替换为 pub.dev 上实际版本
+  cpu_info_plus: ^0.0.3   # 请替换为 pub.dev 上实际版本
   # 本地路径集成示例：
   # cpu_info_plus:
   #   path: ../cpu_info_plus
